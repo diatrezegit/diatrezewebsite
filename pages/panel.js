@@ -1,4 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { db } from '../lib/firebase';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from 'firebase/firestore';
 import styles from '../styles/Home.module.css';
 
 const senhaPainel = 'diatreze1312';
@@ -18,41 +27,42 @@ export default function Painel() {
     dinheiroGanho: 0,
   });
   const [editandoInfo, setEditandoInfo] = useState(false);
+  const [ids, setIds] = useState([]);
 
   useEffect(() => {
-    const armazenadas = JSON.parse(localStorage.getItem('senhas')) || [];
-    setSenhas(armazenadas);
+    const carregarSenhas = async () => {
+      const querySnapshot = await getDocs(collection(db, 'senhas'));
+      const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setSenhas(data);
+    };
 
-    const infoSalva = JSON.parse(localStorage.getItem('informacoes'));
-    if (infoSalva) setInformacoes(infoSalva);
+    const carregarInfo = async () => {
+      const querySnapshot = await getDocs(collection(db, 'informacoes'));
+      querySnapshot.forEach(doc => setInformacoes({ ...doc.data(), id: doc.id }));
+    };
+
+    carregarSenhas();
+    carregarInfo();
   }, []);
 
   const entrarPainel = (e) => {
     e.preventDefault();
-    if (senhaEntrada === senhaPainel) {
-      setAcessoLiberado(true);
-    } else {
-      alert('Senha do painel incorreta.');
-    }
+    if (senhaEntrada === senhaPainel) setAcessoLiberado(true);
+    else alert('Senha do painel incorreta.');
   };
 
-  const adicionarSenha = () => {
-    if (novaSenha.trim() === '') return;
-    if (senhas.some((s) => s.senha === novaSenha.trim())) {
-      alert('Essa senha já existe.');
-      return;
-    }
-    const atualizadas = [...senhas, { senha: novaSenha.trim(), conteudo: '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.' }];
-    localStorage.setItem('senhas', JSON.stringify(atualizadas));
-    setSenhas(atualizadas);
+  const adicionarSenha = async () => {
+    const docRef = await addDoc(collection(db, 'senhas'), {
+      senha: novaSenha,
+      conteudo: '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.'
+    });
+    setSenhas([...senhas, { senha: novaSenha, conteudo: '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.', id: docRef.id }]);
     setNovaSenha('');
   };
 
-  const removerSenha = (index) => {
-    const atualizadas = [...senhas];
-    atualizadas.splice(index, 1);
-    localStorage.setItem('senhas', JSON.stringify(atualizadas));
-    setSenhas(atualizadas);
+  const removerSenha = async (id) => {
+    await deleteDoc(doc(db, 'senhas', id));
+    setSenhas(senhas.filter(s => s.id !== id));
   };
 
   const iniciarEdicaoSenha = (index) => {
@@ -61,27 +71,23 @@ export default function Painel() {
     setNovoConteudo(senhas[index].conteudo);
   };
 
-  const salvarEdicao = () => {
-    if (novaSenha.trim() === '') {
-      alert('Senha não pode estar vazia.');
-      return;
-    }
-    const atualizadas = [...senhas];
-    atualizadas[editandoIndex] = { senha: novaSenha.trim(), conteudo: novoConteudo };
-    localStorage.setItem('senhas', JSON.stringify(atualizadas));
-    setSenhas(atualizadas);
+  const salvarEdicao = async () => {
+    const id = senhas[editandoIndex].id;
+    await updateDoc(doc(db, 'senhas', id), {
+      senha: novaSenha,
+      conteudo: novoConteudo
+    });
+    const novas = [...senhas];
+    novas[editandoIndex] = { senha: novaSenha, conteudo: novoConteudo, id };
+    setSenhas(novas);
     setEditandoIndex(null);
     setNovaSenha('');
     setNovoConteudo('');
   };
 
-  const salvarInformacoes = () => {
-    localStorage.setItem('informacoes', JSON.stringify(informacoes));
+  const salvarInformacoes = async () => {
+    await updateDoc(doc(db, 'informacoes', informacoes.id), informacoes);
     setEditandoInfo(false);
-  };
-
-  const handleChangeInfo = (e) => {
-    setInformacoes({ ...informacoes, [e.target.name]: e.target.value });
   };
 
   const pessoasOnline = Math.floor(Math.random() * 10) + 1;
@@ -107,8 +113,18 @@ export default function Painel() {
   return (
     <div className={styles.container}>
       <h1 className={styles.titulo}>🔐 Painel de Senhas</h1>
+      <div className={styles.formulario}>
+        <input
+          className={styles.input}
+          type="text"
+          placeholder="Nova senha"
+          value={novaSenha}
+          onChange={(e) => setNovaSenha(e.target.value)}
+        />
+        <button className={styles.botao} onClick={adicionarSenha}>➕ Adicionar Senha</button>
+      </div>
 
-      {editandoIndex !== null ? (
+      {editandoIndex !== null && (
         <div className={styles.formulario}>
           <input
             className={styles.input}
@@ -126,68 +142,32 @@ export default function Painel() {
             style={{ resize: 'vertical' }}
           />
           <button className={styles.botao} onClick={salvarEdicao}>💾 Salvar</button>
-          <button className={styles.botao} style={{ backgroundColor: '#f44336', marginLeft: '1rem' }} onClick={() => setEditandoIndex(null)}>Cancelar</button>
+          <button
+            className={styles.botao}
+            style={{ backgroundColor: '#f44336', marginLeft: '1rem' }}
+            onClick={() => setEditandoIndex(null)}
+          >Cancelar</button>
         </div>
-      ) : (
-        <>
-          <div className={styles.formulario}>
-            <input
-              className={styles.input}
-              type="text"
-              placeholder="Nova senha"
-              value={novaSenha}
-              onChange={(e) => setNovaSenha(e.target.value)}
-            />
-            <button className={styles.botao} onClick={adicionarSenha}>➕ Adicionar Senha</button>
-          </div>
-
-          <div className={styles.subtitulo} style={{ marginTop: '2rem' }}>
-            <h3>Senhas cadastradas:</h3>
-            {senhas.length === 0 ? (
-              <p>Nenhuma senha cadastrada ainda.</p>
-            ) : (
-              <ul>
-                {senhas.map(({ senha }, index) => (
-                  <li key={index} style={{ color: '#aaa', marginBottom: '0.5rem' }}>
-                    <strong>{senha}</strong>
-                    <button
-                      style={{ marginLeft: 10 }}
-                      onClick={() => iniciarEdicaoSenha(index)}
-                      aria-label={`Editar senha e conteúdo da senha ${senha}`}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#f44336',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        marginLeft: 10,
-                      }}
-                      onClick={() => removerSenha(index)}
-                      aria-label={`Remover senha ${senha}`}
-                    >
-                      ✖
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </>
       )}
 
-      {/* Painel de Informações abaixo das senhas */}
-      <div className={styles.subtitulo} style={{ marginTop: '3rem' }}>
+      <div className={styles.subtitulo}>
+        <h3>Senhas cadastradas:</h3>
+        {senhas.map((s, i) => (
+          <p key={s.id}><strong>{s.senha}</strong>
+            <button onClick={() => iniciarEdicaoSenha(i)}>✏️</button>
+            <button onClick={() => removerSenha(s.id)} style={{ marginLeft: 10 }}>❌</button>
+          </p>
+        ))}
+      </div>
+
+      <div className={styles.subtitulo} style={{ marginTop: '2rem' }}>
         <h3>Painel de Informações:</h3>
         {editandoInfo ? (
           <div>
-            <input name="showsEfetuados" value={informacoes.showsEfetuados} onChange={handleChangeInfo} placeholder="Shows efetuados" className={styles.input} />
-            <input name="showsPendentes" value={informacoes.showsPendentes} onChange={handleChangeInfo} placeholder="Shows pendentes" className={styles.input} />
-            <input name="dinheiroTotal" value={informacoes.dinheiroTotal} onChange={handleChangeInfo} placeholder="Dinheiro total" className={styles.input} />
-            <input name="dinheiroGanho" value={informacoes.dinheiroGanho} onChange={handleChangeInfo} placeholder="Dinheiro ganho" className={styles.input} />
+            <input name="showsEfetuados" value={informacoes.showsEfetuados} onChange={(e) => setInformacoes({ ...informacoes, showsEfetuados: e.target.value })} className={styles.input} />
+            <input name="showsPendentes" value={informacoes.showsPendentes} onChange={(e) => setInformacoes({ ...informacoes, showsPendentes: e.target.value })} className={styles.input} />
+            <input name="dinheiroTotal" value={informacoes.dinheiroTotal} onChange={(e) => setInformacoes({ ...informacoes, dinheiroTotal: e.target.value })} className={styles.input} />
+            <input name="dinheiroGanho" value={informacoes.dinheiroGanho} onChange={(e) => setInformacoes({ ...informacoes, dinheiroGanho: e.target.value })} className={styles.input} />
             <button onClick={salvarInformacoes} className={styles.botao}>💾 Salvar</button>
           </div>
         ) : (

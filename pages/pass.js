@@ -1,45 +1,58 @@
+// pass.js
 import { useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import styles from '../styles/Home.module.css';
 
-export default function Pass() {
-  const [senha, setSenha] = useState('');
-  const [acesso, setAcesso] = useState(false);
+export default function ConteudoPrivado() {
+  const [senhaDigitada, setSenhaDigitada] = useState('');
+  const [acessoPermitido, setAcessoPermitido] = useState(false);
   const [conteudo, setConteudo] = useState('');
+  const [senhas, setSenhas] = useState([]);
 
-  const verificarSenha = () => {
-    const senhas = JSON.parse(localStorage.getItem('senhas')) || [];
-    const conteudoPorSenha = JSON.parse(localStorage.getItem('conteudoPorSenha')) || {};
+  useEffect(() => {
+    const carregarSenhas = async () => {
+      const querySnapshot = await getDocs(collection(db, 'senhas'));
+      const data = querySnapshot.docs.map(doc => doc.data());
+      setSenhas(data);
+    };
 
-    if (senhas.includes(senha)) {
-      setAcesso(true);
-      setConteudo(conteudoPorSenha[senha] || '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.');
+    carregarSenhas();
+  }, []);
+
+  const verificarSenha = (e) => {
+    e.preventDefault();
+    const encontrada = senhas.find((s) => s.senha === senhaDigitada);
+    if (encontrada) {
+      setAcessoPermitido(true);
+      setConteudo(encontrada.conteudo);
     } else {
       alert('Senha inválida.');
     }
   };
 
-  return (
-    <div className={styles.container}>
-      {!acesso ? (
-        <div className={styles.formulario}>
-          <h1 className={styles.titulo}>🔒 Área Restrita</h1>
+  if (!acessoPermitido) {
+    return (
+      <div className={styles.container}>
+        <form onSubmit={verificarSenha} className={styles.formulario}>
+          <h1 className={styles.titulo}>🔒 Conteúdo Privado</h1>
           <input
             className={styles.input}
             type="password"
             placeholder="Digite a senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
+            value={senhaDigitada}
+            onChange={(e) => setSenhaDigitada(e.target.value)}
           />
-          <button className={styles.botao} onClick={verificarSenha}>
-            Acessar
-          </button>
-        </div>
-      ) : (
-        <div className={styles.resultado}>
-          <h2>🔓 Acesso Liberado</h2>
-          <p style={{ whiteSpace: 'pre-wrap' }}>{conteudo}</p>
-        </div>
-      )}
+          <button type="submit" className={styles.botao}>Acessar</button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.titulo}>🎧 Conteúdo Privado</h1>
+      <pre className={styles.conteudoPrivado}>{conteudo}</pre>
     </div>
   );
 }
