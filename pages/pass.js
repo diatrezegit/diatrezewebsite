@@ -1,48 +1,57 @@
 import { useState, useEffect } from 'react';
-import { getDatabase, ref, get } from 'firebase/database';
-import { app } from '../utils/firebaseConfig'; // ajuste o caminho conforme seu setup
 import styles from '../styles/Home.module.css';
+import { db } from '../lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
-export default function Pass({ onAcessoLiberado }) {
+export default function Pass() {
   const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState('');
+  const [acesso, setAcesso] = useState(false);
+  const [conteudo, setConteudo] = useState('');
+  const [senhasMap, setSenhasMap] = useState({});
 
-  const db = getDatabase(app);
+  useEffect(() => {
+    const fetchSenhas = async () => {
+      const querySnapshot = await getDocs(collection(db, "senhas"));
+      const map = {};
+      querySnapshot.forEach(doc => {
+        map[doc.id] = doc.data().conteudo;
+      });
+      setSenhasMap(map);
+    };
+    fetchSenhas();
+  }, []);
 
-  const verificarSenha = async (e) => {
-    e.preventDefault();
-    setErro('');
-    try {
-      const snapshot = await get(ref(db, 'senhas'));
-      const senhasDB = snapshot.val() || [];
-      const encontrada = senhasDB.find((s) => s.senha === senha.trim());
-      if (encontrada) {
-        onAcessoLiberado(encontrada.conteudo);
-      } else {
-        setErro('Senha inválida.');
-      }
-    } catch (error) {
-      setErro('Erro ao acessar o banco de dados.');
-      console.error(error);
+  const verificarSenha = () => {
+    if (senha in senhasMap) {
+      setAcesso(true);
+      setConteudo(senhasMap[senha]);
+    } else {
+      alert('Senha inválida.');
     }
   };
 
   return (
     <div className={styles.container}>
-      <form onSubmit={verificarSenha} className={styles.formulario}>
-        <h1 className={styles.titulo}>🔐 Acesso Protegido</h1>
-        <input
-          type="password"
-          placeholder="Digite sua senha"
-          className={styles.input}
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-        />
-        <button type="submit" className={styles.botao}>
-          Entrar
-        </button>
-        {erro && <p style={{ color: 'red' }}>{erro}</p>}
-      </form>
+      {!acesso ? (
+        <div className={styles.formulario}>
+          <h1 className={styles.titulo}>🔐 Conteúdo Protegido</h1>
+          <input
+            className={styles.input}
+            type="password"
+            placeholder="Digite a senha"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+          />
+          <button className={styles.botao} onClick={verificarSenha}>
+            Acessar
+          </button>
+        </div>
+      ) : (
+        <div className={styles.resultado}>
+          <h2>🔓 Acesso Liberado</h2>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{conteudo}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,36 +1,46 @@
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css';
 
 export default function Layout({ children }) {
+  const [menuAberto, setMenuAberto] = useState(false);
+
+  // Fecha o menu ao trocar de rota
+  useEffect(() => {
+    const fecharMenu = () => setMenuAberto(false);
+    window.addEventListener('resize', fecharMenu);
+    return () => window.removeEventListener('resize', fecharMenu);
+  }, []);
+
   return (
     <div className={styles.container}>
-      <nav style={{ marginBottom: '2rem' }}>
-        <Link href="/" className={styles.botao} style={{ marginRight: '1rem' }}>🏠 Início</Link>
-        <Link href="/about" className={styles.botao} style={{ marginRight: '1rem' }}>👥 Sobre nós</Link>
-        <Link href="/shows" className={styles.botao} style={{ marginRight: '1rem' }}>🎤 Shows</Link>
-        <Link href="/pass" className={styles.botao} style={{ marginRight: '1rem' }}>🔒 Conteúdo</Link>
-        <Link href="/panel" className={styles.botao}>⚙️ Painel</Link>
+      <nav className={styles.navbar}>
+        <div className={styles.navHeader}>
+          <div className={styles.logo}>🎶 Dia Treze</div>
+          <button className={styles.hamburguer} onClick={() => setMenuAberto(!menuAberto)}>
+            ☰
+          </button>
+        </div>
+        <div className={`${styles.links} ${menuAberto ? styles.linksAberto : ''}`}>
+          <Link href="/" className={styles.botao}>🏠 Início</Link>
+          <Link href="/about" className={styles.botao}>👥 Sobre nós</Link>
+          <Link href="/shows" className={styles.botao}>🎤 Shows</Link>
+          <Link href="/pass" className={styles.botao}>🔒 Conteúdo</Link>
+          <Link href="/panel" className={styles.botao}>⚙️ Painel</Link>
+        </div>
       </nav>
 
       {children}
 
-      <footer style={{ marginTop: '3rem', textAlign: 'center', color: '#aaa', maxWidth: 600 }}>
+      <footer className={styles.rodape}>
         <p>2025 Todos os direitos © DIA TREZE - Desenvolvido por D13 Website</p>
         <p>
-          <a href="https://www.instagram.com/diatrezebr/" target="_blank" rel="noopener noreferrer" style={{ color: '#ccc', textDecoration: 'underline' }}>
-            Instagram
-          </a>{' | '}
-          <a href="https://wa.me/5566996613122" target="_blank" rel="noopener noreferrer" style={{ color: '#ccc', textDecoration: 'underline' }}>
-            WhatsApp
-          </a>{' | '}
-          <a href="mailto:contatodiatreze@outlook.com.br" style={{ color: '#ccc', textDecoration: 'underline' }}>
-            Email
-          </a>
+          <a href="https://www.instagram.com/diatrezebr/" target="_blank" rel="noopener noreferrer">Instagram</a>{' | '}
+          <a href="https://wa.me/5566996613122" target="_blank" rel="noopener noreferrer">WhatsApp</a>{' | '}
+          <a href="mailto:contatodiatreze@outlook.com.br">Email</a>
         </p>
-        <p style={{ marginTop: '1rem' }}>
-          Dia Treze é um espaço onde há música, mesmo sem a fama e o reconhecimento como grandes estúdios musicais. Aqui, acreditamos que tudo vai dar certo.
-          Com João MC e Murilo MC como o vocal, cada música é uma música única. O nome do estúdio carrega uma sugestão de nossos colaboradores, e cada música,
-          cada letra, é criada com paixão por nossa equipe. Esse é o nosso orgulho, é a nossa Dia Treze!!!
+        <p>
+          Dia Treze é um espaço onde há música, mesmo sem a fama e o reconhecimento como grandes estúdios musicais...
         </p>
       </footer>
     </div>

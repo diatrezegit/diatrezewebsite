@@ -81,3 +81,64 @@
     transform: translateY(0);
   }
 }
+.navbar {
+  margin-bottom: 2rem;
+}
+
+.navHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.hamburguer {
+  display: none;
+  font-size: 2rem;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.linksAberto {
+  display: block !important;
+}
+
+.rodape {
+  margin-top: 3rem;
+  text-align: center;
+  color: #aaa;
+  max-width: 600px;
+}
+
+.rodape a {
+  color: #ccc;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .links {
+    display: none;
+    flex-direction: column;
+  }
+
+  .hamburguer {
+    display: block;
+  }
+
+  .botao {
+    margin-bottom: 1rem;
+  }
+}
