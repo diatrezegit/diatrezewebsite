@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getDatabase, ref, get } from 'firebase/database';
-import { app } from '../lib/firebase'; // ajuste o caminho conforme seu setup
+import { app } from '../utils/firebaseConfig'; // ajuste o caminho conforme seu setup
 import styles from '../styles/Home.module.css';
 
 export default function Pass({ onAcessoLiberado }) {

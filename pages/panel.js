@@ -3,7 +3,7 @@
 // painel.js
 import { useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css';
-import { db, ref, onValue, set, push, update, remove } from '../lib/firebase';
+import { db, ref, onValue, set, push, update, remove } from '../utils/firebaseConfig';
 
 const senhaPainel = 'diatreze1312';
 
