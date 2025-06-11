@@ -34,7 +34,7 @@ export default function Pass() {
     <div className={styles.container}>
       {!acesso ? (
         <div className={styles.formulario}>
-          <h1 className={styles.titulo}>🔐 Conteúdo Protegido</h1>
+          <h1 className={styles.titulo}>🔒 Conteúdo Protegido</h1>
           <input
             className={styles.input}
             type="password"

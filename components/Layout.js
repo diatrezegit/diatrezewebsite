@@ -1,27 +1,15 @@
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css';
 
 export default function Layout({ children }) {
-  const [menuAberto, setMenuAberto] = useState(false);
-
-  // Fecha o menu ao trocar de rota
-  useEffect(() => {
-    const fecharMenu = () => setMenuAberto(false);
-    window.addEventListener('resize', fecharMenu);
-    return () => window.removeEventListener('resize', fecharMenu);
-  }, []);
-
   return (
     <div className={styles.container}>
       <nav className={styles.navbar}>
         <div className={styles.navHeader}>
           <div className={styles.logo}>🎶 Dia Treze</div>
-          <button className={styles.hamburguer} onClick={() => setMenuAberto(!menuAberto)}>
-            ☰
-          </button>
         </div>
-        <div className={`${styles.links} ${menuAberto ? styles.linksAberto : ''}`}>
+
+        <div className={styles.links}>
           <Link href="/" className={styles.botao}>🏠 Início</Link>
           <Link href="/about" className={styles.botao}>👥 Sobre nós</Link>
           <Link href="/shows" className={styles.botao}>🎤 Shows</Link>

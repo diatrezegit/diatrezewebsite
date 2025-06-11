@@ -142,3 +142,36 @@
     margin-bottom: 1rem;
   }
 }
+.navbar {
+  background-color: #111;
+  padding: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.navHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-direction: row; /* Força horizontal sempre */
+}
+
+.botao {
+  padding: 0.5rem 1rem;
+  background-color: #222;
+  border: 1px solid #444;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+
+.botao:hover {
+  background-color: #333;
+}
