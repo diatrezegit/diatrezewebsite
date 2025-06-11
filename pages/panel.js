@@ -3,7 +3,7 @@ import styles from '../styles/Home.module.css';
 import { db } from '../lib/firebase';
 import {
   collection, getDocs, setDoc, doc, deleteDoc, getDoc,
-  addDoc, onSnapshot, query, orderBy
+  addDoc, onSnapshot, query, orderBy, serverTimestamp
 } from 'firebase/firestore';
 
 const senhaPainel = 'diatreze1312';
@@ -20,6 +20,7 @@ export default function Painel() {
     showsPendentes: 0,
     dinheiroTotal: 0,
     dinheiroGanho: 0,
+    pessoasOnline: 0,
   });
   const [editandoInfo, setEditandoInfo] = useState(false);
 
@@ -51,14 +52,49 @@ export default function Painel() {
     fetchInformacoes();
 
     const q = query(collection(db, "mensagens"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeMsgs = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setMensagens(msgs);
     });
-    return () => unsubscribe();
+
+    const unsubOnline = onSnapshot(doc(db, "config", "informacoes"), (docSnap) => {
+      if (docSnap.exists()) {
+        setInformacoes(prev => ({ ...prev, pessoasOnline: docSnap.data().pessoasOnline || 0 }));
+      }
+    });
+
+    const atualizarOnline = async () => {
+      const docRef = doc(db, "config", "informacoes");
+      const snap = await getDoc(docRef);
+      let atual = 0;
+      if (snap.exists()) {
+        atual = snap.data().pessoasOnline || 0;
+      }
+      await setDoc(docRef, { ...snap.data(), pessoasOnline: atual + 1 });
+    };
+
+    atualizarOnline();
+
+    const antesDeSair = async () => {
+      const docRef = doc(db, "config", "informacoes");
+      const snap = await getDoc(docRef);
+      let atual = 1;
+      if (snap.exists()) {
+        atual = snap.data().pessoasOnline || 1;
+      }
+      await setDoc(docRef, { ...snap.data(), pessoasOnline: Math.max(atual - 1, 0) });
+    };
+
+    window.addEventListener("beforeunload", antesDeSair);
+
+    return () => {
+      window.removeEventListener("beforeunload", antesDeSair);
+      unsubOnline();
+      unsubscribeMsgs();
+    };
   }, []);
 
   const entrarPainel = (e) => {
@@ -107,6 +143,11 @@ export default function Painel() {
       return;
     }
 
+    const senhaOriginal = senhas[editandoIndex].senha;
+    if (senhaOriginal !== novaSenha.trim()) {
+      await deleteDoc(doc(db, "senhas", senhaOriginal));
+    }
+
     await setDoc(doc(db, "senhas", novaSenha.trim()), { conteudo: novoConteudo });
     const atualizadas = [...senhas];
     atualizadas[editandoIndex] = { senha: novaSenha.trim(), conteudo: novoConteudo };
@@ -131,12 +172,10 @@ export default function Painel() {
     await addDoc(collection(db, "mensagens"), {
       nome: nomeUsuario.trim(),
       texto: mensagem.trim(),
-      timestamp: new Date()
+      timestamp: serverTimestamp()
     });
     setMensagem('');
   };
-
-  const pessoasOnline = Math.floor(Math.random() * 10) + 1;
 
   if (!acessoLiberado) {
     return (
@@ -173,7 +212,11 @@ export default function Painel() {
               <input className={styles.input} type="text" placeholder="Editar senha" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
               <textarea className={styles.input} rows="6" placeholder="Editar conteúdo" value={novoConteudo} onChange={(e) => setNovoConteudo(e.target.value)} style={{ resize: 'vertical' }} />
               <button className={styles.botao} onClick={salvarEdicao}>💾 Salvar</button>
-              <button className={styles.botao} style={{ backgroundColor: '#f44336', marginLeft: '1rem' }} onClick={() => setEditandoIndex(null)}>Cancelar</button>
+              <button className={styles.botao} style={{ backgroundColor: '#f44336', marginLeft: '1rem' }} onClick={() => {
+                setEditandoIndex(null);
+                setNovaSenha('');
+                setNovoConteudo('');
+              }}>Cancelar</button>
             </div>
           ) : (
             <>
@@ -225,7 +268,7 @@ export default function Painel() {
               <p>Shows pendentes: {informacoes.showsPendentes}</p>
               <p>Dinheiro total: R$ {informacoes.dinheiroTotal}</p>
               <p>Dinheiro ganho: R$ {informacoes.dinheiroGanho}</p>
-              <p>Pessoas online: {pessoasOnline}</p>
+              <p>Pessoas online: {informacoes.pessoasOnline}</p>
               <button onClick={() => setEditandoInfo(true)}>✏️</button>
             </div>
           )}
