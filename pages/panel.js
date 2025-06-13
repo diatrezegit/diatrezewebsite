@@ -3,7 +3,7 @@ import styles from '../styles/Home.module.css';
 import { db } from '../lib/firebase';
 import {
   collection, getDocs, setDoc, doc, deleteDoc, getDoc,
-  addDoc, onSnapshot, query, orderBy, serverTimestamp
+  onSnapshot
 } from 'firebase/firestore';
 
 const senhaPainel = 'diatreze1312';
@@ -14,6 +14,7 @@ export default function Painel() {
   const [senhas, setSenhas] = useState([]);
   const [editandoIndex, setEditandoIndex] = useState(null);
   const [novaSenha, setNovaSenha] = useState('');
+  const [nomeNovo, setNomeNovo] = useState('');
   const [novoConteudo, setNovoConteudo] = useState('');
   const [informacoes, setInformacoes] = useState({
     showsEfetuados: 0,
@@ -24,10 +25,6 @@ export default function Painel() {
   });
   const [editandoInfo, setEditandoInfo] = useState(false);
 
-  const [nomeUsuario, setNomeUsuario] = useState('');
-  const [mensagem, setMensagem] = useState('');
-  const [mensagens, setMensagens] = useState([]);
-
   const [abaAtiva, setAbaAtiva] = useState('senhas');
 
   useEffect(() => {
@@ -35,7 +32,7 @@ export default function Painel() {
       const querySnapshot = await getDocs(collection(db, "senhas"));
       const dados = [];
       querySnapshot.forEach(doc => {
-        dados.push({ senha: doc.id, conteudo: doc.data().conteudo });
+        dados.push({ senha: doc.id, conteudo: doc.data().conteudo, nome: doc.data().nome });
       });
       setSenhas(dados);
     };
@@ -50,15 +47,6 @@ export default function Painel() {
 
     fetchSenhas();
     fetchInformacoes();
-
-    const q = query(collection(db, "mensagens"), orderBy("timestamp", "asc"));
-    const unsubscribeMsgs = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMensagens(msgs);
-    });
 
     const unsubOnline = onSnapshot(doc(db, "config", "informacoes"), (docSnap) => {
       if (docSnap.exists()) {
@@ -93,7 +81,6 @@ export default function Painel() {
     return () => {
       window.removeEventListener("beforeunload", antesDeSair);
       unsubOnline();
-      unsubscribeMsgs();
     };
   }, []);
 
@@ -107,7 +94,7 @@ export default function Painel() {
   };
 
   const adicionarSenha = async () => {
-    if (novaSenha.trim() === '') return;
+    if (novaSenha.trim() === '' || nomeNovo.trim() === '') return;
     const jaExiste = senhas.some(s => s.senha === novaSenha.trim());
     if (jaExiste) {
       alert('Essa senha já existe.');
@@ -116,12 +103,14 @@ export default function Painel() {
 
     const novo = {
       senha: novaSenha.trim(),
-      conteudo: '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.'
+      conteudo: '🎧 Bem-vindo ao conteúdo privado!\nVocê acessou com sucesso.',
+      nome: nomeNovo.trim()
     };
 
-    await setDoc(doc(db, "senhas", novo.senha), { conteudo: novo.conteudo });
+    await setDoc(doc(db, "senhas", novo.senha), { conteudo: novo.conteudo, nome: novo.nome });
     setSenhas([...senhas, novo]);
     setNovaSenha('');
+    setNomeNovo('');
   };
 
   const removerSenha = async (index) => {
@@ -135,11 +124,12 @@ export default function Painel() {
     setEditandoIndex(index);
     setNovaSenha(senhas[index].senha);
     setNovoConteudo(senhas[index].conteudo);
+    setNomeNovo(senhas[index].nome || '');
   };
 
   const salvarEdicao = async () => {
-    if (novaSenha.trim() === '') {
-      alert('Senha não pode estar vazia.');
+    if (novaSenha.trim() === '' || nomeNovo.trim() === '') {
+      alert('Preencha todos os campos.');
       return;
     }
 
@@ -148,13 +138,14 @@ export default function Painel() {
       await deleteDoc(doc(db, "senhas", senhaOriginal));
     }
 
-    await setDoc(doc(db, "senhas", novaSenha.trim()), { conteudo: novoConteudo });
+    await setDoc(doc(db, "senhas", novaSenha.trim()), { conteudo: novoConteudo, nome: nomeNovo.trim() });
     const atualizadas = [...senhas];
-    atualizadas[editandoIndex] = { senha: novaSenha.trim(), conteudo: novoConteudo };
+    atualizadas[editandoIndex] = { senha: novaSenha.trim(), conteudo: novoConteudo, nome: nomeNovo.trim() };
     setSenhas(atualizadas);
     setEditandoIndex(null);
     setNovaSenha('');
     setNovoConteudo('');
+    setNomeNovo('');
   };
 
   const salvarInformacoes = async () => {
@@ -164,17 +155,6 @@ export default function Painel() {
 
   const handleChangeInfo = (e) => {
     setInformacoes({ ...informacoes, [e.target.name]: e.target.value });
-  };
-
-  const enviarMensagem = async () => {
-    if (nomeUsuario.trim() === '' || mensagem.trim() === '') return;
-
-    await addDoc(collection(db, "mensagens"), {
-      nome: nomeUsuario.trim(),
-      texto: mensagem.trim(),
-      timestamp: serverTimestamp()
-    });
-    setMensagem('');
   };
 
   if (!acessoLiberado) {
@@ -202,7 +182,6 @@ export default function Painel() {
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
         <button onClick={() => setAbaAtiva('senhas')} className={styles.botao}>🔑 Senhas</button>
         <button onClick={() => setAbaAtiva('informacoes')} className={styles.botao}>📋 Informações</button>
-        <button onClick={() => setAbaAtiva('chat')} className={styles.botao}>💬 Bate-papo</button>
       </div>
 
       {abaAtiva === 'senhas' && (
@@ -210,18 +189,21 @@ export default function Painel() {
           {editandoIndex !== null ? (
             <div className={styles.formulario}>
               <input className={styles.input} type="text" placeholder="Editar senha" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+              <input className={styles.input} type="text" placeholder="Editar nome" value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} />
               <textarea className={styles.input} rows="6" placeholder="Editar conteúdo" value={novoConteudo} onChange={(e) => setNovoConteudo(e.target.value)} style={{ resize: 'vertical' }} />
               <button className={styles.botao} onClick={salvarEdicao}>💾 Salvar</button>
               <button className={styles.botao} style={{ backgroundColor: '#f44336', marginLeft: '1rem' }} onClick={() => {
                 setEditandoIndex(null);
                 setNovaSenha('');
                 setNovoConteudo('');
+                setNomeNovo('');
               }}>Cancelar</button>
             </div>
           ) : (
             <>
               <div className={styles.formulario}>
                 <input className={styles.input} type="text" placeholder="Nova senha" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+                <input className={styles.input} type="text" placeholder="Nome do usuário" value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} />
                 <button className={styles.botao} onClick={adicionarSenha}>➕ Adicionar Senha</button>
               </div>
               <div className={styles.subtitulo} style={{ marginTop: '2rem' }}>
@@ -230,9 +212,9 @@ export default function Painel() {
                   <p>Nenhuma senha cadastrada ainda.</p>
                 ) : (
                   <ul>
-                    {senhas.map(({ senha }, index) => (
+                    {senhas.map(({ senha, nome }, index) => (
                       <li key={index} style={{ color: '#aaa', marginBottom: '0.5rem' }}>
-                        <strong>{senha}</strong>
+                        <strong>{senha}</strong> - <em>{nome}</em>
                         <button onClick={() => iniciarEdicaoSenha(index)} style={{ marginLeft: 10 }}>✏️</button>
                         <button onClick={() => removerSenha(index)} style={{ marginLeft: 10, color: '#f44336' }}>✖</button>
                       </li>
@@ -272,30 +254,6 @@ export default function Painel() {
               <button onClick={() => setEditandoInfo(true)}>✏️</button>
             </div>
           )}
-        </div>
-      )}
-
-      {abaAtiva === 'chat' && (
-        <div className={styles.subtitulo}>
-          <h3>💬 Bate-papo:</h3>
-          <input className={styles.input} type="text" placeholder="Seu nome" value={nomeUsuario} onChange={(e) => setNomeUsuario(e.target.value)} />
-          <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '1rem', background: '#222', padding: '1rem', borderRadius: '8px' }}>
-            {mensagens.map((msg) => {
-              const data = new Date(msg.timestamp?.toDate?.() || msg.timestamp);
-              const hora = data.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const dia = data.toLocaleDateString();
-              return (
-                <div key={msg.id} style={{ marginBottom: '0.5rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
-                  <strong style={{ color: '#5ad' }}>{msg.nome}</strong> <span style={{ fontSize: '0.8rem', color: '#aaa' }}>{dia} {hora}</span>
-                  <p style={{ margin: '0.2rem 0', color: '#eee' }}>{msg.texto}</p>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', marginTop: '1rem' }}>
-            <input className={styles.input} type="text" placeholder="Digite sua mensagem" value={mensagem} onChange={(e) => setMensagem(e.target.value)} style={{ flex: 1 }} />
-            <button onClick={enviarMensagem} className={styles.botao} style={{ marginLeft: '1rem' }}>📩 Enviar</button>
-          </div>
         </div>
       )}
     </div>
