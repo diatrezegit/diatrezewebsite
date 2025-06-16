@@ -1,7 +1,15 @@
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from '../styles/Home.module.css';
 
 export default function Layout({ children }) {
+  const [isAndroid, setIsAndroid] = useState(false);
+
+  useEffect(() => {
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
+    setIsAndroid(userAgent.includes('android'));
+  }, []);
+
   return (
     <div className={styles.container}>
       <nav className={styles.navbar}>
@@ -15,6 +23,9 @@ export default function Layout({ children }) {
           <Link href="/shows" className={styles.botao}>🎤 Shows</Link>
           <Link href="/pass" className={styles.botao}>🔒 Conteúdo</Link>
           <Link href="/panel" className={styles.botao}>⚙️ Painel</Link>
+          {isAndroid && (
+            <Link href="/app" className={styles.botao}>📱 Aplicativo</Link>
+          )}
         </div>
       </nav>
 
